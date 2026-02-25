@@ -86,7 +86,8 @@
 
     const REPO = 'tomwalczak/claude-cowork-fact-checking-skills';
     const BRANCH = 'main';
-    const INSTALL_PROMPT = `Install the draft review skills from https://github.com/${REPO}`;
+    const COWORK_PROMPT = `Install the draft review skills from https://github.com/${REPO}`;
+    const WEB_PROMPT = `Create four skills from the SKILL.md files in the skills/ directory of this repo: https://github.com/${REPO} — read each one and create a permanent skill from it.`;
 
     const SKILLS = [
       {
@@ -94,7 +95,7 @@
         name: 'Draft Review',
         subtitle: 'Orchestrator',
         emoji: '🎯',
-        description: 'Coordinates the full pipeline: fact-check, then critics in parallel, then synthesis.',
+        description: 'Coordinates the full pipeline: fact-check → critics in parallel → freeform synthesis + verification rubric. Supports ensemble mode for higher confidence.',
       },
       {
         id: 'fact-check',
@@ -180,7 +181,10 @@
                 <strong className="text-bark-700">Neither critic sees the other's work.</strong> When they converge on the same weakness, that's high-signal feedback. When they disagree, the tension reveals where your argument is genuinely ambiguous.
               </p>
               <p>
-                <strong className="text-bark-700">Finally, everything gets synthesized</strong> into a single response: factual corrections, structural critique organized by theme, what the draft gets right, and a prioritized revision checklist you can act on immediately.
+                <strong className="text-bark-700">Finally, you get two outputs:</strong> a freeform chat synthesis with actionable revision guidance, and a structured verification rubric document. The rubric tracks every finding with 🔴/🟡/🟢 status — fix the reds, address or justify the ambers, and your draft passes verification.
+              </p>
+              <p>
+                <strong className="text-bark-700">For higher confidence, use ensemble mode.</strong> Say "run 3 of each" and the orchestrator spawns multiple independent instances of every agent. Where they converge, the finding is robust. Where they diverge, the claim is genuinely uncertain. Revise, resubmit, and the rubric updates.
               </p>
             </div>
           </div>
@@ -210,7 +214,14 @@
               <PipelineStep
                 emoji="🎯"
                 label="Synthesis"
-                description="Unified review with factual corrections, structural critique, and a prioritized revision checklist"
+                description="Freeform chat summary with factual corrections, structural critique, and revision guidance"
+                highlight
+              />
+              <FlowArrow />
+              <PipelineStep
+                emoji="📋"
+                label="Verification rubric"
+                description="Structured 🔴🟡🟢 tracking document — revise, resubmit, get all green"
                 highlight
               />
             </div>
@@ -222,13 +233,16 @@
     // ── Install modal ──
     function InstallModal({ onClose }) {
       const [copied, setCopied] = useState(false);
+      const [tab, setTab] = useState('web');
+
+      const currentPrompt = tab === 'web' ? WEB_PROMPT : COWORK_PROMPT;
 
       const handleCopy = useCallback(() => {
-        navigator.clipboard.writeText(INSTALL_PROMPT).then(() => {
+        navigator.clipboard.writeText(currentPrompt).then(() => {
           setCopied(true);
           setTimeout(() => setCopied(false), 2000);
         });
-      }, []);
+      }, [currentPrompt]);
 
       return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
@@ -236,29 +250,49 @@
           <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 fade-in" onClick={e => e.stopPropagation()}>
             <button onClick={onClose} className="absolute top-4 right-4 text-bark-400 hover:text-bark-600 text-xl leading-none">&times;</button>
 
-            <h3 className="font-display text-2xl text-bark-900 mb-2">Add to Claude</h3>
-            <p className="text-bark-500 mb-5 text-sm leading-relaxed">
-              Open Claude Cowork with your workspace folder selected, then paste this instruction:
-            </p>
+            <h3 className="font-display text-2xl text-bark-900 mb-4">Add to Claude</h3>
 
-            <div className="bg-cream rounded-xl p-4 border border-bark-100 mb-4">
-              <p className="text-bark-700 text-sm leading-relaxed italic">"{INSTALL_PROMPT}"</p>
+            {/* Tabs */}
+            <div className="flex gap-1 bg-bark-50 rounded-lg p-1 mb-5">
+              <button
+                onClick={() => setTab('web')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${tab === 'web' ? 'bg-white text-bark-800 shadow-sm' : 'text-bark-400 hover:text-bark-600'}`}
+              >
+                Claude.ai
+              </button>
+              <button
+                onClick={() => setTab('cowork')}
+                className={`flex-1 py-2 rounded-md text-sm font-medium transition-all ${tab === 'cowork' ? 'bg-white text-bark-800 shadow-sm' : 'text-bark-400 hover:text-bark-600'}`}
+              >
+                Cowork
+              </button>
             </div>
 
-            <button
-              onClick={handleCopy}
-              className={`w-full py-3 rounded-xl font-medium text-sm transition-all duration-200
-                ${copied
-                  ? 'bg-green-50 text-green-700 border-2 border-green-200'
-                  : 'bg-clay-500 text-white hover:bg-clay-600 border-2 border-clay-500 hover:border-clay-600'
-                }`}
-            >
-              {copied ? 'Copied!' : 'Copy to clipboard'}
-            </button>
-
-            <p className="text-bark-400 text-xs mt-4 text-center leading-relaxed">
-              Claude will read the repo, clone it, and install the skills automatically.
-            </p>
+            <div className="fade-in" key={tab}>
+              <p className="text-bark-500 mb-4 text-sm leading-relaxed">
+                {tab === 'web'
+                  ? 'Open a new conversation on claude.ai and paste this:'
+                  : 'Open Cowork with your workspace folder selected and paste this:'}
+              </p>
+              <div className="bg-cream rounded-xl p-4 border border-bark-100 mb-4">
+                <p className="text-bark-700 text-sm leading-relaxed italic">"{currentPrompt}"</p>
+              </div>
+              <button
+                onClick={handleCopy}
+                className={`w-full py-3 rounded-xl font-medium text-sm transition-all duration-200
+                  ${copied
+                    ? 'bg-green-50 text-green-700 border-2 border-green-200'
+                    : 'bg-clay-500 text-white hover:bg-clay-600 border-2 border-clay-500 hover:border-clay-600'
+                  }`}
+              >
+                {copied ? 'Copied!' : 'Copy to clipboard'}
+              </button>
+              <p className="text-bark-400 text-xs mt-4 text-center leading-relaxed">
+                {tab === 'web'
+                  ? "Claude will fetch the repo, create four permanent skills, and save them to your account."
+                  : "Claude will read the repo, clone it, and install the skills into your workspace."}
+              </p>
+            </div>
           </div>
         </div>
       );
@@ -361,7 +395,7 @@
               Fact-check and critique<br className="hidden sm:block" /> any draft with Claude
             </h1>
             <p className="text-bark-500 text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
-              A set of skills for Claude Cowork that run a multi-stage review: journalistic fact-checking, two independent critic perspectives, and a unified synthesis with actionable revisions.
+              A set of skills for Claude that run a multi-stage review: journalistic fact-checking, two independent critic perspectives, a freeform synthesis, and a structured verification rubric with red/amber/green status tracking. Run in ensemble mode for higher confidence through convergence analysis. Works with Claude.ai and Cowork.
             </p>
             <button
               onClick={() => setShowModal(true)}

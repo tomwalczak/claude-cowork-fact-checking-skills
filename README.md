@@ -13,7 +13,15 @@ A set of skills for [Claude Cowork](https://claude.ai) that run a multi-stage re
 
 ## Install
 
-Clone the repo, then run the install script from your workspace directory (the folder you've selected in Cowork):
+In Cowork, select the folder you want to use as your workspace, then tell Claude:
+
+> Install the draft review skills from https://github.com/tomwalczak/claude-cowork-fact-checking-skills
+
+Claude will read this README, clone the repo, run the install script, and set everything up. The four skill directories end up in `.skills/skills/` in your workspace, which is where Cowork discovers them.
+
+### Manual install
+
+If you prefer to install from the terminal yourself:
 
 ```bash
 cd /path/to/your/workspace
@@ -21,14 +29,6 @@ git clone https://github.com/tomwalczak/claude-cowork-fact-checking-skills.git /
 /tmp/draft-review-skills/install.sh
 rm -rf /tmp/draft-review-skills
 ```
-
-Or as a one-liner:
-
-```bash
-git clone https://github.com/tomwalczak/claude-cowork-fact-checking-skills.git /tmp/draft-review-skills && /tmp/draft-review-skills/install.sh && rm -rf /tmp/draft-review-skills
-```
-
-This copies the four skill directories into `.skills/skills/` in your workspace, which is where Cowork discovers them.
 
 ## Usage
 

@@ -1,32 +1,31 @@
 #!/bin/bash
 #
-# Install draft-review skills into a Cowork workspace.
+# Install draft-review skills into the current directory for Claude Cowork.
 #
 # Usage:
 #   cd /path/to/your/workspace
-#   /path/to/install.sh
-#
-# Or as a one-liner after cloning:
-#   git clone https://github.com/tomwalczak/claude-cowork-fact-checking-skills.git /tmp/draft-review-skills && /tmp/draft-review-skills/install.sh && rm -rf /tmp/draft-review-skills
+#   bash <(curl -s https://raw.githubusercontent.com/tomwalczak/claude-cowork-fact-checking-skills/main/install.sh)
 
 set -e
 
-# Where Cowork looks for skills
+REPO="https://github.com/tomwalczak/claude-cowork-fact-checking-skills.git"
 SKILLS_DIR=".skills/skills"
+TMP_DIR=$(mktemp -d)
 
-# The repo's skills payload (relative to this script)
+trap "rm -rf $TMP_DIR" EXIT
+
+# If running from inside the repo already, use local files; otherwise clone
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-SOURCE_DIR="$SCRIPT_DIR/skills"
-
-if [ ! -d "$SOURCE_DIR" ]; then
-  echo "Error: Could not find skills directory at $SOURCE_DIR"
-  exit 1
+if [ -d "$SCRIPT_DIR/skills" ]; then
+  SOURCE_DIR="$SCRIPT_DIR/skills"
+else
+  echo "Cloning repo..."
+  git clone --quiet "$REPO" "$TMP_DIR/repo"
+  SOURCE_DIR="$TMP_DIR/repo/skills"
 fi
 
-# Create the target directory if it doesn't exist
 mkdir -p "$SKILLS_DIR"
 
-# Copy each skill
 for skill in "$SOURCE_DIR"/*/; do
   skill_name=$(basename "$skill")
   echo "Installing $skill_name..."

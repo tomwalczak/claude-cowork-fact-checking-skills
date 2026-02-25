@@ -17,7 +17,7 @@ Clone the repo, then run the install script from your workspace directory (the f
 
 ```bash
 cd /path/to/your/workspace
-git clone https://github.com/YOURUSER/draft-review-skills.git /tmp/draft-review-skills
+git clone https://github.com/tomwalczak/claude-cowork-fact-checking-skills.git /tmp/draft-review-skills
 /tmp/draft-review-skills/install.sh
 rm -rf /tmp/draft-review-skills
 ```
@@ -25,7 +25,7 @@ rm -rf /tmp/draft-review-skills
 Or as a one-liner:
 
 ```bash
-git clone https://github.com/YOURUSER/draft-review-skills.git /tmp/draft-review-skills && /tmp/draft-review-skills/install.sh && rm -rf /tmp/draft-review-skills
+git clone https://github.com/tomwalczak/claude-cowork-fact-checking-skills.git /tmp/draft-review-skills && /tmp/draft-review-skills/install.sh && rm -rf /tmp/draft-review-skills
 ```
 
 This copies the four skill directories into `.skills/skills/` in your workspace, which is where Cowork discovers them.

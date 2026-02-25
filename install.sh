@@ -7,7 +7,7 @@
 #   /path/to/install.sh
 #
 # Or as a one-liner after cloning:
-#   git clone https://github.com/YOURUSER/draft-review-skills.git /tmp/draft-review-skills && /tmp/draft-review-skills/install.sh && rm -rf /tmp/draft-review-skills
+#   git clone https://github.com/tomwalczak/claude-cowork-fact-checking-skills.git /tmp/draft-review-skills && /tmp/draft-review-skills/install.sh && rm -rf /tmp/draft-review-skills
 
 set -e
 

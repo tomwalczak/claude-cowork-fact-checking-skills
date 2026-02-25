@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Draft Review Skills for Claude</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            cream: '#FFF8F0',
+            clay: {
+              50: '#FEF3EC',
+              100: '#FDDBC8',
+              200: '#F9B899',
+              300: '#F09366',
+              400: '#E0764A',
+              500: '#C75B3A',
+              600: '#A84A2F',
+              700: '#863B26',
+              800: '#6B2F1F',
+              900: '#4A2116',
+            },
+            bark: {
+              50: '#F7F4F2',
+              100: '#E8E2DD',
+              200: '#D1C7BE',
+              300: '#B5A798',
+              400: '#9A8A79',
+              500: '#7D6E5E',
+              600: '#655849',
+              700: '#504638',
+              800: '#3B3329',
+              900: '#2C251E',
+            },
+          },
+          fontFamily: {
+            sans: ['"Inter"', 'system-ui', '-apple-system', 'sans-serif'],
+            display: ['"Instrument Serif"', 'Georgia', 'serif'],
+          }
+        }
+      }
+    }
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    body { background-color: #FFF8F0; }
+
+    .markdown-body h1 { font-size: 1.75rem; font-weight: 700; margin-top: 1.5rem; margin-bottom: 0.75rem; color: #3B3329; }
+    .markdown-body h2 { font-size: 1.35rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; color: #504638; border-bottom: 1px solid #E8E2DD; padding-bottom: 0.4rem; }
+    .markdown-body h3 { font-size: 1.1rem; font-weight: 600; margin-top: 1.25rem; margin-bottom: 0.4rem; color: #655849; }
+    .markdown-body p { margin-bottom: 0.75rem; line-height: 1.7; }
+    .markdown-body ul { list-style-type: disc; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+    .markdown-body ol { list-style-type: decimal; padding-left: 1.5rem; margin-bottom: 0.75rem; }
+    .markdown-body li { margin-bottom: 0.35rem; line-height: 1.6; }
+    .markdown-body code { background: #F7F4F2; padding: 0.15rem 0.4rem; border-radius: 0.25rem; font-size: 0.875rem; color: #A84A2F; }
+    .markdown-body pre { background: #3B3329; color: #E8E2DD; padding: 1rem; border-radius: 0.5rem; overflow-x: auto; margin-bottom: 1rem; }
+    .markdown-body pre code { background: transparent; color: inherit; padding: 0; }
+    .markdown-body strong { font-weight: 600; color: #3B3329; }
+    .markdown-body blockquote { border-left: 3px solid #C75B3A; padding-left: 1rem; color: #7D6E5E; margin-bottom: 0.75rem; font-style: italic; }
+    .markdown-body hr { border: none; border-top: 1px solid #E8E2DD; margin: 1.5rem 0; }
+
+    /* Remove the YAML frontmatter heading if rendered */
+    .markdown-body > hr:first-child { display: none; }
+    .markdown-body > h2:first-child { display: none; }
+
+    .fade-in { animation: fadeIn 0.3s ease-in; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    .flow-arrow { animation: flowPulse 2s ease-in-out infinite; }
+    @keyframes flowPulse { 0%, 100% { opacity: 0.6; } 50% { opacity: 1; } }
+  </style>
+</head>
+<body class="min-h-screen font-sans text-bark-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useCallback } = React;
+
+    const REPO = 'tomwalczak/claude-cowork-fact-checking-skills';
+    const BRANCH = 'main';
+    const INSTALL_PROMPT = `Install the draft review skills from https://github.com/${REPO}`;
+
+    const SKILLS = [
+      {
+        id: 'draft-review',
+        name: 'Draft Review',
+        subtitle: 'Orchestrator',
+        emoji: '🎯',
+        description: 'Coordinates the full pipeline: fact-check, then critics in parallel, then synthesis.',
+      },
+      {
+        id: 'fact-check',
+        name: 'Fact Check',
+        subtitle: 'Verification',
+        emoji: '🔍',
+        description: 'Verifies every checkable claim using web search. Produces verdicts with sources.',
+      },
+      {
+        id: 'cowen-critique',
+        name: 'Cowen Critique',
+        subtitle: 'Stress test',
+        emoji: '🧠',
+        description: "Tyler Cowen's reasoning methods: boring explanations, revealed preferences, market signals.",
+      },
+      {
+        id: 'yglesias-critique',
+        name: 'Yglesias Critique',
+        subtitle: 'Policy lens',
+        emoji: '🏛️',
+        description: "Matt Yglesias's policy analysis: feasibility, cost disease, political survival.",
+      },
+    ];
+
+    // ── Vertical flow arrow ──
+    function FlowArrow() {
+      return (
+        <div className="flex justify-center py-1.5 flow-arrow">
+          <svg width="24" height="28" viewBox="0 0 24 28">
+            <path d="M12 0 L12 20 M7 15 L12 22 L17 15" stroke="#C75B3A" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      );
+    }
+
+    // ── Pipeline step (vertical, descriptive) ──
+    function PipelineStep({ emoji, label, description, highlight, split }) {
+      if (split) {
+        return (
+          <div className="flex gap-3 w-full">
+            {split.map((item, i) => (
+              <div key={i} className="flex-1 flex items-start gap-3 bg-white border-2 border-bark-100 rounded-xl px-4 py-3 shadow-sm">
+                <span className="text-xl flex-shrink-0 mt-0.5">{item.emoji}</span>
+                <div className="min-w-0">
+                  <div className="text-sm font-semibold text-bark-800">{item.label}</div>
+                  <div className="text-xs text-bark-400 leading-relaxed mt-0.5">{item.description}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        );
+      }
+      return (
+        <div className={`flex items-start gap-3 w-full rounded-xl border-2 px-4 py-3 shadow-sm
+          ${highlight ? 'bg-clay-50 border-clay-300' : 'bg-white border-bark-100'}`}>
+          <span className="text-xl flex-shrink-0 mt-0.5">{emoji}</span>
+          <div className="min-w-0">
+            <div className={`text-sm font-semibold ${highlight ? 'text-clay-700' : 'text-bark-800'}`}>{label}</div>
+            <div className="text-xs text-bark-400 leading-relaxed mt-0.5">{description}</div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Combined "How it works" section ──
+    function HowItWorks() {
+      return (
+        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12 items-start">
+          {/* Text description */}
+          <div className="flex-1 lg:order-1 order-2">
+            <h2 className="font-display text-2xl text-bark-800 mb-4">How it works</h2>
+            <div className="space-y-4 text-sm text-bark-600 leading-relaxed">
+              <p>
+                Paste your blog post, essay, policy brief, or even a tweet thread. The orchestrator manages the entire review pipeline automatically.
+              </p>
+              <p>
+                <strong className="text-bark-700">First, every checkable claim gets verified.</strong> The fact-checker searches the web for primary sources — government data, peer-reviewed research, official databases — and produces a verdict for each claim: accurate, mostly accurate, disputed, inaccurate, or unverified.
+              </p>
+              <p>
+                <strong className="text-bark-700">Then, two independent critics review your draft in parallel.</strong> Each receives the fact-check report so they don't duplicate verification work. The Cowen critique stress-tests your argument using economic reasoning — looking for boring explanations, revealed preferences, and market signals that contradict your thesis. The Yglesias critique tests policy feasibility — tracing money through systems, checking political survival, and identifying cost disease traps.
+              </p>
+              <p>
+                <strong className="text-bark-700">Neither critic sees the other's work.</strong> When they converge on the same weakness, that's high-signal feedback. When they disagree, the tension reveals where your argument is genuinely ambiguous.
+              </p>
+              <p>
+                <strong className="text-bark-700">Finally, everything gets synthesized</strong> into a single response: factual corrections, structural critique organized by theme, what the draft gets right, and a prioritized revision checklist you can act on immediately.
+              </p>
+            </div>
+          </div>
+
+          {/* Vertical pipeline diagram */}
+          <div className="w-full lg:w-72 flex-shrink-0 lg:order-2 order-1">
+            <div className="flex flex-col items-center">
+              <PipelineStep
+                emoji="📝"
+                label="Your draft"
+                description="Blog post, essay, policy brief, tweet thread — anything with checkable claims"
+              />
+              <FlowArrow />
+              <PipelineStep
+                emoji="🔍"
+                label="Fact check"
+                description="Every claim verified against primary sources with confidence levels and citations"
+              />
+              <FlowArrow />
+              <PipelineStep
+                split={[
+                  { emoji: '🧠', label: 'Cowen', description: 'Economic stress test' },
+                  { emoji: '🏛️', label: 'Yglesias', description: 'Policy feasibility' },
+                ]}
+              />
+              <FlowArrow />
+              <PipelineStep
+                emoji="🎯"
+                label="Synthesis"
+                description="Unified review with factual corrections, structural critique, and a prioritized revision checklist"
+                highlight
+              />
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Install modal ──
+    function InstallModal({ onClose }) {
+      const [copied, setCopied] = useState(false);
+
+      const handleCopy = useCallback(() => {
+        navigator.clipboard.writeText(INSTALL_PROMPT).then(() => {
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        });
+      }, []);
+
+      return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+          <div className="absolute inset-0 bg-bark-900/40 backdrop-blur-sm" />
+          <div className="relative bg-white rounded-2xl shadow-2xl max-w-lg w-full p-8 fade-in" onClick={e => e.stopPropagation()}>
+            <button onClick={onClose} className="absolute top-4 right-4 text-bark-400 hover:text-bark-600 text-xl leading-none">&times;</button>
+
+            <h3 className="font-display text-2xl text-bark-900 mb-2">Add to Claude</h3>
+            <p className="text-bark-500 mb-5 text-sm leading-relaxed">
+              Open Claude Cowork with your workspace folder selected, then paste this instruction:
+            </p>
+
+            <div className="bg-cream rounded-xl p-4 border border-bark-100 mb-4">
+              <p className="text-bark-700 text-sm leading-relaxed italic">"{INSTALL_PROMPT}"</p>
+            </div>
+
+            <button
+              onClick={handleCopy}
+              className={`w-full py-3 rounded-xl font-medium text-sm transition-all duration-200
+                ${copied
+                  ? 'bg-green-50 text-green-700 border-2 border-green-200'
+                  : 'bg-clay-500 text-white hover:bg-clay-600 border-2 border-clay-500 hover:border-clay-600'
+                }`}
+            >
+              {copied ? 'Copied!' : 'Copy to clipboard'}
+            </button>
+
+            <p className="text-bark-400 text-xs mt-4 text-center leading-relaxed">
+              Claude will read the repo, clone it, and install the skills automatically.
+            </p>
+          </div>
+        </div>
+      );
+    }
+
+    // ── Skill browser sidebar item ──
+    function SidebarItem({ skill, active, onClick }) {
+      return (
+        <button
+          onClick={onClick}
+          className={`w-full text-left px-4 py-3 rounded-xl transition-all duration-150 group
+            ${active
+              ? 'bg-clay-50 border-2 border-clay-200'
+              : 'bg-transparent border-2 border-transparent hover:bg-bark-50 hover:border-bark-100'
+            }`}
+        >
+          <div className="flex items-center gap-3">
+            <span className="text-xl">{skill.emoji}</span>
+            <div className="min-w-0">
+              <div className={`text-sm font-semibold truncate ${active ? 'text-clay-700' : 'text-bark-700'}`}>{skill.name}</div>
+              <div className="text-xs text-bark-400 truncate">{skill.subtitle}</div>
+            </div>
+          </div>
+        </button>
+      );
+    }
+
+    // ── Main markdown viewer ──
+    function MarkdownViewer({ skillId }) {
+      const [content, setContent] = useState('');
+      const [loading, setLoading] = useState(true);
+      const [error, setError] = useState(null);
+
+      useEffect(() => {
+        setLoading(true);
+        setError(null);
+        const url = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/skills/${skillId}/SKILL.md`;
+        fetch(url)
+          .then(res => {
+            if (!res.ok) throw new Error(`Failed to fetch (${res.status})`);
+            return res.text();
+          })
+          .then(text => {
+            // Strip YAML frontmatter
+            const stripped = text.replace(/^---[\s\S]*?---\n*/m, '');
+            setContent(marked.parse(stripped));
+            setLoading(false);
+          })
+          .catch(err => {
+            setError(err.message);
+            setLoading(false);
+          });
+      }, [skillId]);
+
+      if (loading) {
+        return (
+          <div className="flex items-center justify-center py-20">
+            <div className="w-6 h-6 border-2 border-clay-300 border-t-clay-500 rounded-full animate-spin" />
+          </div>
+        );
+      }
+      if (error) {
+        return <div className="text-red-500 py-8 text-center text-sm">Could not load skill: {error}</div>;
+      }
+
+      return (
+        <div
+          className="markdown-body fade-in text-bark-700 text-[0.95rem]"
+          dangerouslySetInnerHTML={{ __html: content }}
+        />
+      );
+    }
+
+    // ── App ──
+    function App() {
+      const [activeSkill, setActiveSkill] = useState('draft-review');
+      const [showModal, setShowModal] = useState(false);
+      const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+      const currentSkill = SKILLS.find(s => s.id === activeSkill);
+
+      return (
+        <div className="min-h-screen">
+          {/* Header */}
+          <header className="sticky top-0 z-40 bg-cream/80 backdrop-blur-md border-b border-bark-100">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 flex items-center justify-between">
+              <span className="font-display text-lg text-bark-800">Draft Review Skills</span>
+              <button
+                onClick={() => setShowModal(true)}
+                className="bg-clay-500 text-white px-4 py-1.5 rounded-lg text-sm font-medium hover:bg-clay-600 transition-colors"
+              >
+                Add to Claude
+              </button>
+            </div>
+          </header>
+
+          {/* Hero */}
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 pt-12 pb-8 text-center">
+            <h1 className="font-display text-4xl sm:text-5xl text-bark-900 mb-4 leading-tight">
+              Fact-check and critique<br className="hidden sm:block" /> any draft with Claude
+            </h1>
+            <p className="text-bark-500 text-lg max-w-2xl mx-auto mb-8 leading-relaxed">
+              A set of skills for Claude Cowork that run a multi-stage review: journalistic fact-checking, two independent critic perspectives, and a unified synthesis with actionable revisions.
+            </p>
+            <button
+              onClick={() => setShowModal(true)}
+              className="bg-clay-500 text-white px-8 py-3 rounded-xl text-base font-medium hover:bg-clay-600 transition-colors shadow-lg shadow-clay-500/20"
+            >
+              Add to Claude
+            </button>
+          </section>
+
+          {/* How it works + Pipeline */}
+          <section className="max-w-5xl mx-auto px-4 sm:px-6 pb-16">
+            <HowItWorks />
+          </section>
+
+          {/* Skill Browser */}
+          <section className="max-w-6xl mx-auto px-4 sm:px-6 pb-16">
+            <h2 className="font-display text-2xl text-bark-800 mb-6 text-center">Browse the skills</h2>
+
+            {/* Mobile skill selector */}
+            <div className="md:hidden mb-4">
+              <button
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="w-full flex items-center justify-between bg-white border border-bark-100 rounded-xl px-4 py-3 text-sm font-medium text-bark-700"
+              >
+                <span>{currentSkill.emoji} {currentSkill.name}</span>
+                <svg className={`w-4 h-4 transition-transform ${mobileMenuOpen ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
+              {mobileMenuOpen && (
+                <div className="mt-2 bg-white border border-bark-100 rounded-xl p-2 shadow-lg fade-in">
+                  {SKILLS.map(s => (
+                    <SidebarItem
+                      key={s.id}
+                      skill={s}
+                      active={s.id === activeSkill}
+                      onClick={() => { setActiveSkill(s.id); setMobileMenuOpen(false); }}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-6">
+              {/* Desktop sidebar */}
+              <aside className="hidden md:block w-56 flex-shrink-0">
+                <div className="sticky top-20 space-y-1.5">
+                  {SKILLS.map(s => (
+                    <SidebarItem
+                      key={s.id}
+                      skill={s}
+                      active={s.id === activeSkill}
+                      onClick={() => setActiveSkill(s.id)}
+                    />
+                  ))}
+                </div>
+              </aside>
+
+              {/* Markdown panel */}
+              <main className="flex-1 min-w-0 bg-white rounded-2xl border border-bark-100 shadow-sm p-6 sm:p-8">
+                <div className="mb-4 pb-4 border-b border-bark-100">
+                  <div className="flex items-center gap-3 mb-1">
+                    <span className="text-2xl">{currentSkill.emoji}</span>
+                    <h3 className="font-display text-xl text-bark-900">{currentSkill.name}</h3>
+                    <span className="text-xs bg-bark-50 text-bark-500 px-2 py-0.5 rounded-full">{currentSkill.subtitle}</span>
+                  </div>
+                  <p className="text-sm text-bark-400">{currentSkill.description}</p>
+                </div>
+                <MarkdownViewer skillId={activeSkill} />
+              </main>
+            </div>
+          </section>
+
+          {/* Footer */}
+          <footer className="border-t border-bark-100 py-8">
+            <div className="max-w-6xl mx-auto px-4 sm:px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-bark-400">
+              <span>Built for <a href="https://claude.ai" className="text-clay-500 hover:text-clay-600 underline underline-offset-2">Claude Cowork</a></span>
+              <a href={`https://github.com/${REPO}`} className="text-clay-500 hover:text-clay-600 underline underline-offset-2">View on GitHub</a>
+            </div>
+          </footer>
+
+          {/* Modal */}
+          {showModal && <InstallModal onClose={() => setShowModal(false)} />}
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>

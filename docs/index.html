@@ -87,7 +87,7 @@
     const REPO = 'tomwalczak/claude-cowork-fact-checking-skills';
     const BRANCH = 'main';
     const COWORK_PROMPT = `Install the draft review skills from https://github.com/${REPO}`;
-    const WEB_PROMPT = `Create four skills from the SKILL.md files in the skills/ directory of this repo: https://github.com/${REPO} — read each one and create a permanent skill from it.`;
+    const WEB_PROMPT = `Read the SKILL.md files in the skills/ directory of this repo: https://github.com/${REPO} — for each one, use your built-in skill creator to either create a new skill from it or update the existing skill if one with the same name already exists.`;
 
     const SKILLS = [
       {
@@ -289,7 +289,7 @@
               </button>
               <p className="text-bark-400 text-xs mt-4 text-center leading-relaxed">
                 {tab === 'web'
-                  ? "Claude will fetch the repo, create four permanent skills, and save them to your account."
+                  ? "Claude will fetch the repo and use its built-in skill creator to create or update each skill."
                   : "Claude will read the repo, clone it, and install the skills into your workspace."}
               </p>
             </div>

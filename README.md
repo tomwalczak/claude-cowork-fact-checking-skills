@@ -19,9 +19,9 @@ Works with both **Claude.ai** (web) and **Claude Cowork** (desktop).
 
 Tell Claude:
 
-> Create four skills from the SKILL.md files in the skills/ directory of this repo: https://github.com/tomwalczak/claude-cowork-fact-checking-skills — read each one and create a permanent skill from it.
+> Read the SKILL.md files in the skills/ directory of this repo: https://github.com/tomwalczak/claude-cowork-fact-checking-skills — for each one, use your built-in skill creator to either create a new skill from it or update the existing skill if one with the same name already exists.
 
-Claude will fetch the repo, read each SKILL.md, and use its built-in skill creator to save them permanently. They persist across conversations.
+Claude will fetch the repo, read each SKILL.md, and use its built-in skill creator to save them as permanent skills. They persist across conversations. If you've installed these skills before and are updating to a newer version, Claude will update the existing skills rather than creating duplicates.
 
 ### Option B: Claude Cowork (desktop)
 
